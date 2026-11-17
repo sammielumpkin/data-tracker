@@ -20,14 +20,39 @@ def _first(daily, key):
     return vals[0] if vals else None
 
 
+# Open-Meteo snaps requested coordinates to its model grid (offsets seen: ~0.1 deg),
+# so a response location is matched to the nearest configured destination.
+MAX_MATCH_DEG = 0.5
+
+
+def _match_destination(loc, destinations):
+    lat, lon = loc.get("latitude"), loc.get("longitude")
+    if lat is None or lon is None:
+        return None
+    best, best_d = None, None
+    for d in destinations:
+        dlon = abs(lon - d["lon"])
+        dlon = min(dlon, 360 - dlon)  # wrap around the antimeridian
+        dist = ((lat - d["lat"]) ** 2 + dlon ** 2) ** 0.5
+        if best_d is None or dist < best_d:
+            best, best_d = d, dist
+    return best if best_d <= MAX_MATCH_DEG else None
+
+
 def parse_open_meteo(body, destinations, source):
-    """Open-Meteo returns a list (one object per requested location, same order)."""
+    """Open-Meteo returns a list (one object per requested location).
+
+    Locations are matched to destinations by lat/lon, not position, so raw files
+    stay readable after destinations are added. Locations that match no current
+    destination (e.g. one removed from the config) are skipped.
+    """
     data = json.loads(body)
     locations = data if isinstance(data, list) else [data]
-    if len(locations) != len(destinations):
-        raise ValueError(f"{len(locations)} locations in response, {len(destinations)} in config")
     rows = []
-    for dest, loc in zip(destinations, locations):
+    for loc in locations:
+        dest = _match_destination(loc, destinations)
+        if dest is None:
+            continue
         daily = loc.get("daily") or {}
         date = _first(daily, "time")
         if not date:
