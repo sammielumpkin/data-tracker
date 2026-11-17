@@ -301,6 +301,159 @@ async function initToday(main) {
         : h("p", { class: "empty glass" }, "No destinations have reported yet.")));
 }
 
+// ---------- Browse page ----------
+
+const SHORTLIST_KEY = "sunny-escapes-shortlist";
+
+const BROWSE_COLUMNS = [
+  { key: "temp_high_f", label: "High °F", digits: 1 },
+  { key: "temp_low_f", label: "Low °F", digits: 1 },
+  { key: "precip_in", label: "Rain in", digits: 2 },
+  { key: "uv_index", label: "UV", digits: 1 },
+  { key: "wind_max_mph", label: "Wind mph", digits: 1 },
+  { key: "sunshine_hours", label: "Sun h", digits: 1 },
+];
+
+function loadShortlist() {
+  try {
+    const v = JSON.parse(localStorage.getItem(SHORTLIST_KEY) || "[]");
+    return new Set(Array.isArray(v) ? v.filter(x => typeof x === "string") : []);
+  } catch (e) { return new Set(); }
+}
+
+function saveShortlist(set) {
+  try { localStorage.setItem(SHORTLIST_KEY, JSON.stringify([...set])); } catch (e) { /* storage unavailable */ }
+}
+
+// Each destination's most recent row.
+function latestRows(rows) {
+  const latest = new Map();
+  for (const r of rows) {
+    const best = latest.get(r.item_id);
+    if (!best || r.date > best.date) latest.set(r.item_id, r);
+  }
+  return [...latest.values()];
+}
+
+const uniqueSorted = vals => [...new Set(vals.filter(Boolean))].sort((a, b) => a.localeCompare(b));
+
+async function initBrowse(main) {
+  const { rows } = await loadData();
+  const all = latestRows(rows);
+  const shortlist = loadShortlist();
+  const state = { region: "", vibe: "", search: "", only: false, sort: "item", dir: 1 };
+
+  const option = (v, t) => h("option", { value: v }, t);
+  const regionSel = h("select", { id: "f-region" }, option("", "All regions"), uniqueSorted(all.map(r => r.region)).map(v => option(v, v)));
+  const vibeSel = h("select", { id: "f-vibe" }, option("", "All vibes"), uniqueSorted(all.map(r => r.vibe)).map(v => option(v, v)));
+  const searchBox = h("input", { id: "f-search", type: "search", placeholder: "Search destinations…", autocomplete: "off" });
+  const onlyBox = h("input", { id: "f-only", type: "checkbox" });
+
+  const field = (id, label, control) => h("label", { class: "field", for: id }, h("span", null, label), control);
+  const filters = h("section", { class: "filters glass", "aria-label": "Filters" },
+    field("f-search", "Search", searchBox),
+    field("f-region", "Region", regionSel),
+    field("f-vibe", "Vibe", vibeSel),
+    h("label", { class: "toggle", for: "f-only" }, onlyBox, h("span", null, "⭐ Show shortlist only")));
+
+  const count = h("p", { class: "section-note", role: "status", "aria-live": "polite" });
+  const tableWrap = h("div", { class: "table-wrap glass" });
+
+  function sortHeader(key, label, numeric) {
+    const active = state.sort === key;
+    return h("th", { scope: "col", class: numeric ? "num" : "", "aria-sort": active ? (state.dir === 1 ? "ascending" : "descending") : "none" },
+      h("button", { type: "button", class: "sort-btn" + (active ? " active" : ""), "data-sort": key, title: `Sort by ${label}` },
+        label, h("span", { class: "arrow", "aria-hidden": "true" }, active ? (state.dir === 1 ? "▲" : "▼") : "↕")));
+  }
+
+  function visibleRows() {
+    const q = state.search.trim().toLowerCase();
+    const list = all.filter(r =>
+      (!state.region || r.region === state.region) &&
+      (!state.vibe || r.vibe === state.vibe) &&
+      (!q || r.item.toLowerCase().includes(q)) &&
+      (!state.only || shortlist.has(r.item_id)));
+    const k = state.sort;
+    list.sort((a, b) => {
+      if (k === "item") return state.dir * a.item.localeCompare(b.item);
+      const x = a[k], y = b[k];
+      if (x === null && y === null) return a.item.localeCompare(b.item);
+      if (x === null) return 1; // missing values always last
+      if (y === null) return -1;
+      return (x - y) * state.dir || a.item.localeCompare(b.item);
+    });
+    return list;
+  }
+
+  function render() {
+    const list = visibleRows();
+    count.textContent = `Showing ${list.length} of ${all.length} destinations · ⭐ ${shortlist.size} on your shortlist`;
+    if (!list.length) {
+      tableWrap.replaceChildren(h("p", { class: "empty" }, state.only && !shortlist.size
+        ? "⭐ Your shortlist is empty. Tap a star to add a destination."
+        : "🐚 No destinations match those filters."));
+      return;
+    }
+    const table = h("table", { class: "browse-table" },
+      h("thead", null, h("tr", null,
+        h("th", { scope: "col", class: "star-col" }, h("span", { class: "sr-only" }, "Shortlist")),
+        sortHeader("item", "Destination", false),
+        ...BROWSE_COLUMNS.map(c => sortHeader(c.key, c.label, true)))),
+      h("tbody", null, list.map(r => {
+        const on = shortlist.has(r.item_id);
+        return h("tr", null,
+          h("td", { class: "star-col" },
+            h("button", { type: "button", class: "star" + (on ? " on" : ""), "data-star": r.item_id,
+              "aria-pressed": on ? "true" : "false",
+              "aria-label": (on ? "Remove " : "Add ") + r.item + (on ? " from" : " to") + " shortlist" }, on ? "★" : "☆")),
+          h("th", { scope: "row", class: "dest" },
+            h("span", { class: "dest-name" }, placeEmoji(r.item_id) + " " + r.item),
+            h("span", { class: "place-where" }, [r.country, r.region].filter(Boolean).join(" · "),
+              r.vibe && h("span", { class: "tag" }, r.vibe))),
+          ...BROWSE_COLUMNS.map(c => h("td", { class: "num" },
+            c.key === "temp_high_f" && r[c.key] !== null
+              ? h("span", { class: "temp-pill", style: `background:${tempColor(r[c.key])}` }, fmt(r[c.key], c.digits))
+              : fmt(r[c.key], c.digits))));
+      })));
+    tableWrap.replaceChildren(table);
+  }
+
+  searchBox.addEventListener("input", () => { state.search = searchBox.value; render(); });
+  regionSel.addEventListener("change", () => { state.region = regionSel.value; render(); });
+  vibeSel.addEventListener("change", () => { state.vibe = vibeSel.value; render(); });
+  onlyBox.addEventListener("change", () => { state.only = onlyBox.checked; render(); });
+
+  tableWrap.addEventListener("click", e => {
+    const sortBtn = e.target.closest("[data-sort]");
+    if (sortBtn) {
+      const key = sortBtn.dataset.sort;
+      if (state.sort === key) state.dir = -state.dir;
+      else { state.sort = key; state.dir = key === "item" ? 1 : -1; }
+      render();
+      const again = tableWrap.querySelector(`[data-sort="${key}"]`);
+      if (again) again.focus();
+      return;
+    }
+    const star = e.target.closest("[data-star]");
+    if (star) {
+      const id = star.dataset.star;
+      if (shortlist.has(id)) shortlist.delete(id); else shortlist.add(id);
+      saveShortlist(shortlist);
+      render();
+      const again = tableWrap.querySelector(`[data-star="${id}"]`);
+      if (again) again.focus();
+    }
+  });
+
+  main.replaceChildren(
+    filters,
+    h("section", { "aria-labelledby": "browse-h" },
+      h("h2", { class: "section-title script", id: "browse-h" }, "All destinations"),
+      count,
+      tableWrap));
+  render();
+}
+
 // ---------- start-up ----------
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -309,7 +462,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (!main) return;
   main.append(h("p", { class: "empty glass" }, "🌊 Loading the latest waves…"));
   try {
-    if (document.body.dataset.page === "today") await initToday(main);
+    const page = document.body.dataset.page;
+    if (page === "today") await initToday(main);
+    else if (page === "browse") await initBrowse(main);
   } catch (err) {
     console.error(err);
     main.replaceChildren(h("p", { class: "empty glass" },
