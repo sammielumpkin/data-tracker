@@ -1,0 +1,14 @@
+[
+  {"item_id": "paris", "name": "Paris", "country": "France", "region": "Europe", "vibe": "city", "lat": 48.8566, "lon": 2.3522},
+  {"item_id": "santorini", "name": "Santorini", "country": "Greece", "region": "Europe", "vibe": "beach", "lat": 36.3932, "lon": 25.4615},
+  {"item_id": "amalfi", "name": "Amalfi Coast", "country": "Italy", "region": "Europe", "vibe": "beach", "lat": 40.6340, "lon": 14.6027},
+  {"item_id": "dubai", "name": "Dubai", "country": "UAE", "region": "Middle East", "vibe": "city", "lat": 25.2048, "lon": 55.2708},
+  {"item_id": "maldives", "name": "Maldives (Malé)", "country": "Maldives", "region": "Asia", "vibe": "beach", "lat": 4.1755, "lon": 73.5093},
+  {"item_id": "bali", "name": "Bali (Denpasar)", "country": "Indonesia", "region": "Asia", "vibe": "beach", "lat": -8.6500, "lon": 115.2167},
+  {"item_id": "tokyo", "name": "Tokyo", "country": "Japan", "region": "Asia", "vibe": "city", "lat": 35.6762, "lon": 139.6503},
+  {"item_id": "bora-bora", "name": "Bora Bora", "country": "French Polynesia", "region": "Oceania", "vibe": "beach", "lat": -16.5004, "lon": -151.7415},
+  {"item_id": "maui", "name": "Maui (Wailea)", "country": "USA", "region": "North America", "vibe": "beach", "lat": 20.6900, "lon": -156.4400},
+  {"item_id": "cabo", "name": "Cabo San Lucas", "country": "Mexico", "region": "North America", "vibe": "beach", "lat": 22.8905, "lon": -109.9167},
+  {"item_id": "tulum", "name": "Tulum", "country": "Mexico", "region": "North America", "vibe": "beach", "lat": 20.2114, "lon": -87.4654},
+  {"item_id": "nassau", "name": "Nassau", "country": "Bahamas", "region": "Caribbean", "vibe": "beach", "lat": 25.0443, "lon": -77.3504}
+]
