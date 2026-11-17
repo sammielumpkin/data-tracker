@@ -643,14 +643,14 @@ function findingBiggestMove(rows, dates) {
 function findingSpread(rows, dates) {
   const avgs = [...seriesByItem(rows, "temp_high_f").values()].map(s => ({ name: s.name, avg: mean(s.points.map(p => p.v)), n: s.points.length }));
   const heading = "Warmest vs. coolest destination";
-  if (dates.length < 3 || avgs.length < 2) return finding(heading, "Compares the average high temperature of each destination.", needsDays("An average over time", plural(dates.length, "day"), 3));
+  if (avgs.length < 2) return finding(heading, "Compares the average high temperature of each destination.", needsDays("A spread between destinations", plural(dates.length, "day"), 1));
   avgs.sort((a, b) => b.avg - a.avg);
   const hot = avgs[0], cool = avgs[avgs.length - 1], spread = hot.avg - cool.avg;
   const title = `${spread.toFixed(1)}°F separates the warmest (${hot.name}) from the coolest (${cool.name})`;
   const explain = h("span", null,
     `We average temp_high_f over all ${plural(dates.length, "day")} in history.csv for each destination, then subtract the lowest average from the highest: `,
     h("strong", null, `${fmt(hot.avg)}°F (${hot.name}) minus ${fmt(cool.avg)}°F (${cool.name}) = ${spread.toFixed(1)}°F`),
-    ".");
+    dates.length < 3 ? ". With so few days these are really just the latest highs, and they firm up as history grows." : ".");
   const { box, canvas } = chartBox("Bar chart of average high temperature for each destination");
   new Chart(canvas, {
     type: "bar",
@@ -670,7 +670,7 @@ function findingSunRain(rows, dates) {
   });
   const withSun = stats.filter(s => s.sun !== null), withRain = stats.filter(s => s.rain !== null);
   const heading = "Sunniest vs. rainiest destinations";
-  if (dates.length < 3 || !withSun.length || !withRain.length) return finding(heading, "Compares average sunshine and total rain for each destination.", needsDays("Averages and totals", plural(dates.length, "day"), 3));
+  if (!withSun.length || !withRain.length) return finding(heading, "Compares average sunshine and total rain for each destination.", needsDays("Averages and totals", plural(dates.length, "day"), 1));
   const sunniest = withSun.reduce((b, s) => (s.sun > b.sun ? s : b));
   const rainiest = withRain.reduce((b, s) => (s.rain > b.rain ? s : b));
   const title = `${sunniest.name} is the sunniest (${sunniest.sun.toFixed(1)} h a day) and ${rainiest.name} the rainiest (${rainiest.rain.toFixed(2)} in)`;
