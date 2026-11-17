@@ -1,0 +1,48 @@
+name: Daily weather update
+
+on:
+  schedule:
+    - cron: "0 12 * * *"   # 12:00 UTC every day
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+# Never run two updates at once (e.g. a manual run during the scheduled one).
+concurrency:
+  group: daily-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # A failing source is recorded in status.json; it does not fail this step.
+      - name: Fetch data and rebuild history
+        run: python -m tracker run
+
+      - name: Open or update today's Issue
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python -m tracker issue
+
+      # Runs even if the Issue step failed, so the day's data is never lost.
+      - name: Commit and push data
+        if: ${{ !cancelled() }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/raw data/history.csv data/status.json
+          if git diff --cached --quiet; then
+            echo "No data changes to commit."
+          else
+            git commit -m "Daily data update $(date -u +%F)"
+            git push
+          fi
