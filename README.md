@@ -4,6 +4,8 @@
 
 A daily weather tracker for 12 dream beach and city getaways. Every day a GitHub Action fetches the day's weather, keeps the raw response, rebuilds `data/history.csv` from the raw files, and opens a GitHub Issue listing the biggest temperature movers. A static three-page site (Today, Browse, Trends) reads the CSV in the browser. It is an installable, offline-capable app (web manifest + service worker).
 
+**Live site:** https://sammielumpkin.github.io/data-tracker/
+
 ## Files
 
 ### Site (static, no build step)
