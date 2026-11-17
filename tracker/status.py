@@ -39,5 +39,6 @@ def build_status(run_time, today, source_results, rows):
 def write_status(status):
     STATUS_JSON.parent.mkdir(parents=True, exist_ok=True)
     tmp = STATUS_JSON.with_suffix(".tmp")
-    tmp.write_text(json.dumps(status, indent=2) + "\n", encoding="utf-8")
+    with open(tmp, "w", encoding="utf-8", newline="\n") as f:  # LF even on Windows
+        f.write(json.dumps(status, indent=2) + "\n")
     os.replace(tmp, STATUS_JSON)
