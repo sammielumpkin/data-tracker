@@ -2,7 +2,7 @@
 import json
 import os
 
-from .paths import STATUS_JSON
+from . import paths
 from .raw import list_raw
 
 
@@ -37,8 +37,9 @@ def build_status(run_time, today, source_results, rows):
 
 
 def write_status(status):
-    STATUS_JSON.parent.mkdir(parents=True, exist_ok=True)
-    tmp = STATUS_JSON.with_suffix(".tmp")
+    path = paths.STATUS_JSON
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
     with open(tmp, "w", encoding="utf-8", newline="\n") as f:  # LF even on Windows
         f.write(json.dumps(status, indent=2) + "\n")
-    os.replace(tmp, STATUS_JSON)
+    os.replace(tmp, path)

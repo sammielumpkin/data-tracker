@@ -9,8 +9,8 @@ from .sources import SOURCES
 from .status import build_status, write_status
 
 
-def run():
-    now = datetime.now(timezone.utc)
+def run(now=None):
+    now = now or datetime.now(timezone.utc)
     today = now.strftime("%Y-%m-%d")
     destinations = load_destinations()
 

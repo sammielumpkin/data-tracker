@@ -2,11 +2,11 @@
 import gzip
 import os
 
-from .paths import RAW_DIR
+from . import paths
 
 
 def raw_path(date, source):
-    return RAW_DIR / date / f"{source}.json.gz"
+    return paths.RAW_DIR / date / f"{source}.json.gz"
 
 
 def save_raw(date, source, body: bytes):
@@ -26,8 +26,8 @@ def read_raw(path) -> bytes:
 
 def list_raw():
     """Yield (date, source, path) for every raw file, sorted."""
-    if not RAW_DIR.exists():
+    if not paths.RAW_DIR.exists():
         return
-    for day in sorted(p for p in RAW_DIR.iterdir() if p.is_dir()):
+    for day in sorted(p for p in paths.RAW_DIR.iterdir() if p.is_dir()):
         for f in sorted(day.glob("*.json.gz")):
             yield day.name, f.name[: -len(".json.gz")], f

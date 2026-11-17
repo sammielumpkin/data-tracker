@@ -5,7 +5,7 @@ import os
 import sys
 
 from .config import load_destinations
-from .paths import HISTORY_CSV
+from . import paths
 from .raw import list_raw, read_raw
 
 COLUMNS = [
@@ -95,12 +95,13 @@ def build_rows(destinations):
 def build_history(destinations=None):
     destinations = destinations or load_destinations()
     rows = build_rows(destinations)
-    HISTORY_CSV.parent.mkdir(parents=True, exist_ok=True)
-    tmp = HISTORY_CSV.with_suffix(".tmp")
+    path = paths.HISTORY_CSV
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
     with open(tmp, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=COLUMNS, lineterminator="\n")
         w.writeheader()
         for r in rows:
             w.writerow({k: "" if r[k] is None else r[k] for k in COLUMNS})
-    os.replace(tmp, HISTORY_CSV)
+    os.replace(tmp, path)
     return rows

@@ -1,6 +1,7 @@
 """Usage:
   python -m tracker run       fetch today's data, rebuild history, write status
   python -m tracker rebuild   rebuild data/history.csv from the raw files only
+  python -m tracker issue     open/update today's GitHub Issue (needs GITHUB_TOKEN)
 """
 import sys
 
@@ -15,6 +16,9 @@ def main(argv):
     elif cmd == "rebuild":
         rows = build_history()
         print(f"history.csv rebuilt: {len(rows)} rows")
+    elif cmd == "issue":
+        from .issue import main as issue_main
+        return issue_main(argv[2:])
     else:
         print(__doc__)
         return 2
