@@ -6,9 +6,17 @@
   <title>Sunny Escapes: Today</title>
   <meta name="description" content="Today's weather for dream beach getaways.">
   <link rel="icon" href="images/favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0077B6">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="preload" href="fonts/Pacifico-Regular.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="stylesheet" href="style.css">
   <script src="app.js" defer></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(console.error));
+    }
+  </script>
 </head>
 <body data-page="today" data-title="Today's Forecast" data-subtitle="Where is the sun shining on your next escape?">
   <main id="app"></main>

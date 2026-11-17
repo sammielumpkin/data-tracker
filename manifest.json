@@ -1,0 +1,14 @@
+{
+  "name": "Sunny Escapes",
+  "short_name": "Sunny Escapes",
+  "description": "Weather tracker for dream beach getaways.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#FFF9EF",
+  "theme_color": "#0077B6",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
