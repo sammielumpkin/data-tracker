@@ -454,6 +454,263 @@ async function initBrowse(main) {
   render();
 }
 
+
+// ---------- trends page ----------
+
+const METRICS = [
+  { key: "temp_high_f", label: "High temperature (°F)", unit: "°F" },
+  { key: "temp_low_f", label: "Low temperature (°F)", unit: "°F" },
+  { key: "precip_in", label: "Rain (inches)", unit: " in" },
+  { key: "uv_index", label: "UV index", unit: "" },
+  { key: "wind_max_mph", label: "Top wind (mph)", unit: " mph" },
+  { key: "sunshine_hours", label: "Sunshine (hours)", unit: " h" },
+];
+
+// Beach palette, one colour per destination (dashed once the palette repeats).
+const BEACH = ["#FF6B6B", "#0077B6", "#2EC4B6", "#F5A623", "#12324A", "#E8618C", "#5AA9E6", "#139E90", "#C8553D", "#7B6CD9", "#8AB17D", "#B08968"];
+const seriesColor = i => BEACH[i % BEACH.length];
+
+const mean = xs => xs.reduce((a, b) => a + b, 0) / xs.length;
+const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+const niceDate = d => new Date(d + "T12:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" });
+
+function styleChartDefaults() {
+  Chart.defaults.font.family = '"Poppins", system-ui, sans-serif';
+  Chart.defaults.font.size = 12;
+  Chart.defaults.color = "#4A6275";
+  Chart.defaults.borderColor = "rgba(0, 119, 182, 0.14)";
+  Chart.defaults.maintainAspectRatio = false;
+  Chart.defaults.plugins.legend.labels.usePointStyle = true;
+  Chart.defaults.plugins.tooltip.backgroundColor = "#12324A";
+  Chart.defaults.plugins.tooltip.cornerRadius = 10;
+  Chart.defaults.plugins.tooltip.padding = 10;
+}
+
+function chartBox(label, tall) {
+  const canvas = h("canvas", { role: "img", "aria-label": label });
+  return { box: h("div", { class: "chart-box" + (tall ? " tall" : "") }, canvas), canvas };
+}
+
+const needsDays = (what, have, need) => h("p", { class: "needs-days" },
+  `🏝️ We need more days for this one. ${what} needs at least ${plural(need, "day")} of history and we have ${have} so far. Check back tomorrow!`);
+
+function finding(title, explain, body) {
+  return h("section", { class: "finding glass" }, h("h2", null, title), h("p", { class: "explain" }, explain), body);
+}
+
+// Rows grouped by destination, oldest first, skipping rows with no value for `key`.
+function seriesByItem(rows, key) {
+  const m = new Map();
+  for (const r of rows) {
+    if (r[key] === null) continue;
+    if (!m.has(r.item_id)) m.set(r.item_id, { id: r.item_id, name: r.item, points: [] });
+    m.get(r.item_id).points.push({ date: r.date, v: r[key] });
+  }
+  for (const s of m.values()) s.points.sort((a, b) => (a.date < b.date ? -1 : 1));
+  return m;
+}
+
+const barScales = unit => ({
+  x: { grid: { display: false } },
+  y: { grid: { color: "rgba(0, 119, 182, 0.12)" }, title: { display: true, text: unit } },
+});
+
+// --- the line chart explorer: pick a value and the destinations ---
+function buildExplorer(rows, dates) {
+  const names = new Map();
+  for (const r of rows) names.set(r.item_id, r.item);
+  const ids = [...names.keys()].sort((a, b) => names.get(a).localeCompare(names.get(b)));
+  const colorOf = Object.fromEntries(ids.map((id, i) => [id, seriesColor(i)]));
+  const shown = new Set(ids);
+
+  const select = h("select", { id: "t-metric" }, METRICS.map(m => h("option", { value: m.key }, m.label)));
+  const { box, canvas } = chartBox("Line chart of the chosen weather value for each selected destination over the days", true);
+  const picker = h("fieldset", { class: "picker" }, h("legend", null, "Destinations"));
+  const mini = (text, fn) => { const b = h("button", { type: "button", class: "mini-btn" }, text); b.addEventListener("click", fn); return b; };
+
+  const chart = new Chart(canvas, {
+    type: "line",
+    data: { labels: dates.map(niceDate), datasets: [] },
+    options: {
+      interaction: { mode: "nearest", intersect: false },
+      plugins: { legend: { display: false } },
+      scales: { x: { grid: { display: false } }, y: { grid: { color: "rgba(0, 119, 182, 0.12)" }, title: { display: true, text: "" } } },
+    },
+  });
+
+  function draw() {
+    const metric = METRICS.find(m => m.key === select.value);
+    const byItem = seriesByItem(rows, metric.key);
+    chart.data.datasets = ids.filter(id => shown.has(id)).map(id => {
+      const byDate = new Map((byItem.get(id)?.points || []).map(p => [p.date, p.v]));
+      return {
+        label: names.get(id), data: dates.map(d => byDate.get(d) ?? null),
+        borderColor: colorOf[id], backgroundColor: colorOf[id], tension: 0.3,
+        pointRadius: 4, pointHoverRadius: 6, borderWidth: 2.5, spanGaps: true,
+      };
+    });
+    chart.options.scales.y.title.text = metric.label;
+    chart.options.plugins.tooltip = { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmt(ctx.parsed.y, 2)}${metric.unit}` } };
+    chart.update();
+  }
+
+  for (const id of ids) {
+    const box_ = h("input", { type: "checkbox", checked: true, value: id });
+    box_.addEventListener("change", () => { box_.checked ? shown.add(id) : shown.delete(id); draw(); });
+    picker.append(h("label", { class: "pick" }, box_, h("span", { class: "swatch", style: `background:${colorOf[id]}` }), names.get(id)));
+  }
+  const setAll = on => () => {
+    picker.querySelectorAll("input").forEach(i => { i.checked = on; on ? shown.add(i.value) : shown.delete(i.value); });
+    draw();
+  };
+  picker.append(h("div", { class: "picker-actions" }, mini("Select all", setAll(true)), mini("Clear all", setAll(false))));
+  select.addEventListener("change", draw);
+  draw();
+
+  const note = dates.length < 3
+    ? h("p", { class: "section-note" }, `Only ${plural(dates.length, "day")} of data so far, so the lines are just starting. They fill in every day.`)
+    : null;
+
+  return h("section", { class: "explorer glass" },
+    h("h2", null, "Every value, day by day"),
+    h("p", { class: "section-note" }, "Pick a value and the destinations to compare. Straight from history.csv."),
+    h("label", { class: "field", for: "t-metric" }, h("span", null, "Value"), select),
+    picker, note, box);
+}
+
+// --- finding 1: biggest rise or fall in high temp since the first day ---
+function findingSinceStart(rows, dates) {
+  const heading = "Biggest change in high temp since the first day";
+  const intro = "Compares each destination's high on the latest day with its high on the first day recorded.";
+  if (dates.length < 3) return finding(heading, intro, needsDays("Comparing against the first day", plural(dates.length, "day"), 3));
+  const first = dates[0], last = dates[dates.length - 1];
+  const changes = [];
+  for (const s of seriesByItem(rows, "temp_high_f").values()) {
+    const a = s.points.find(p => p.date === first), b = s.points.find(p => p.date === last);
+    if (a && b) changes.push({ name: s.name, a: a.v, b: b.v, change: round2(b.v - a.v) });
+  }
+  if (!changes.length) return finding(heading, intro, needsDays("Comparing against the first day", plural(dates.length, "day"), 3));
+  changes.sort((x, y) => y.change - x.change);
+  const top = changes.reduce((best, c) => (Math.abs(c.change) > Math.abs(best.change) ? c : best));
+  const title = top.change === 0
+    ? `No destination's high temp has changed since ${niceDate(first)}`
+    : `${top.name} has ${top.change > 0 ? "warmed up" : "cooled down"} the most: ${signed(top.change)}°F since ${niceDate(first)}`;
+  const explain = h("span", null,
+    "For each destination we take temp_high_f on the first date in history.csv (", niceDate(first), ") and subtract it from temp_high_f on the latest date (", niceDate(last), "). The biggest change, up or down, wins: ",
+    h("strong", null, `${top.name}, ${fmt(top.a)}°F to ${fmt(top.b)}°F (${signed(top.change)}°F)`),
+    `. ${plural(changes.length, "destination")} had a value on both days and are compared below.`);
+  const { box, canvas } = chartBox(`Bar chart of the change in high temperature since ${first} for each destination`);
+  new Chart(canvas, {
+    type: "bar",
+    data: { labels: changes.map(c => c.name), datasets: [{ label: "Change in high (°F)", data: changes.map(c => c.change), backgroundColor: changes.map(c => (c.change >= 0 ? "#FF6B6B" : "#2EC4B6")), borderRadius: 8 }] },
+    options: { plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${signed(ctx.parsed.y)}°F` } } }, scales: barScales("Change in high (°F)") },
+  });
+  return finding(title, explain, box);
+}
+
+// --- finding 2: biggest single move in temp_high_f ---
+function findingBiggestMove(rows, dates) {
+  const heading = "Biggest single-day move in high temp";
+  const intro = "Looks for the largest jump or drop in one destination's high from one day to the next.";
+  if (dates.length < 3) return finding(heading, intro, needsDays("Finding the biggest move", plural(dates.length, "day"), 3));
+  const moves = [];
+  for (const s of seriesByItem(rows, "temp_high_f").values())
+    for (let i = 1; i < s.points.length; i++)
+      moves.push({ name: s.name, date: s.points[i].date, prev: s.points[i - 1].date, from: s.points[i - 1].v, to: s.points[i].v, change: round2(s.points[i].v - s.points[i - 1].v) });
+  if (!moves.length) return finding(heading, intro, needsDays("Finding the biggest move", plural(dates.length, "day"), 3));
+  const biggest = list => list.reduce((best, m) => (Math.abs(m.change) > Math.abs(best.change) ? m : best));
+  const top = biggest(moves);
+  const title = top.change === 0
+    ? "No destination's high temp has moved from one day to the next"
+    : `${niceDate(top.date)}: ${top.name} ${top.change > 0 ? "jumped" : "dropped"} ${Math.abs(top.change).toFixed(1)}°F in a day`;
+  const explain = h("span", null,
+    "For every destination we subtract each day's temp_high_f from the previous recorded day's value in history.csv, then keep the largest change in either direction: ",
+    h("strong", null, `${top.name}, ${fmt(top.from)}°F on ${niceDate(top.prev)} to ${fmt(top.to)}°F on ${niceDate(top.date)} (${signed(top.change)}°F)`),
+    `. The chart shows the biggest move made on each day, across ${plural(moves.length, "move")} in total.`);
+  const perDay = dates.slice(1).map(d => { const day = moves.filter(m => m.date === d); return day.length ? biggest(day) : null; });
+  const { box, canvas } = chartBox("Bar chart of the biggest one-day change in high temperature on each day");
+  new Chart(canvas, {
+    type: "bar",
+    data: { labels: dates.slice(1).map(niceDate), datasets: [{ label: "Biggest move (°F)", data: perDay.map(m => (m ? m.change : null)),
+      backgroundColor: perDay.map(m => (m === top ? "#FF6B6B" : "#5AA9E6")), borderRadius: 8 }] },
+    options: { plugins: { legend: { display: false }, tooltip: { callbacks: {
+      label: ctx => { const m = perDay[ctx.dataIndex]; return m ? ` ${m.name}: ${signed(m.change)}°F` : ""; } } } }, scales: barScales("Change in high (°F)") },
+  });
+  return finding(title, explain, box);
+}
+
+// --- finding 3: warmest vs coolest destination by average high ---
+function findingSpread(rows, dates) {
+  const avgs = [...seriesByItem(rows, "temp_high_f").values()].map(s => ({ name: s.name, avg: mean(s.points.map(p => p.v)), n: s.points.length }));
+  const heading = "Warmest vs. coolest destination";
+  if (dates.length < 3 || avgs.length < 2) return finding(heading, "Compares the average high temperature of each destination.", needsDays("An average over time", plural(dates.length, "day"), 3));
+  avgs.sort((a, b) => b.avg - a.avg);
+  const hot = avgs[0], cool = avgs[avgs.length - 1], spread = hot.avg - cool.avg;
+  const title = `${spread.toFixed(1)}°F separates the warmest (${hot.name}) from the coolest (${cool.name})`;
+  const explain = h("span", null,
+    `We average temp_high_f over all ${plural(dates.length, "day")} in history.csv for each destination, then subtract the lowest average from the highest: `,
+    h("strong", null, `${fmt(hot.avg)}°F (${hot.name}) minus ${fmt(cool.avg)}°F (${cool.name}) = ${spread.toFixed(1)}°F`),
+    ".");
+  const { box, canvas } = chartBox("Bar chart of average high temperature for each destination");
+  new Chart(canvas, {
+    type: "bar",
+    data: { labels: avgs.map(a => a.name), datasets: [{ label: "Average high (°F)", data: avgs.map(a => round2(a.avg)),
+      backgroundColor: avgs.map((a, i) => (i === 0 ? "#FF6B6B" : i === avgs.length - 1 ? "#2EC4B6" : "#FFB385")), borderRadius: 8 }] },
+    options: { plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${fmt(ctx.parsed.y, 1)}°F` } } }, scales: barScales("Average high (°F)") },
+  });
+  return finding(title, explain, box);
+}
+
+// --- finding 4: sunniest vs rainiest ---
+function findingSunRain(rows, dates) {
+  const sun = seriesByItem(rows, "sunshine_hours"), rain = seriesByItem(rows, "precip_in");
+  const stats = [...new Set([...sun.keys(), ...rain.keys()])].map(id => {
+    const s = sun.get(id), r = rain.get(id);
+    return { name: (s || r).name, sun: s ? mean(s.points.map(p => p.v)) : null, rain: r ? r.points.reduce((a, p) => a + p.v, 0) : null };
+  });
+  const withSun = stats.filter(s => s.sun !== null), withRain = stats.filter(s => s.rain !== null);
+  const heading = "Sunniest vs. rainiest destinations";
+  if (dates.length < 3 || !withSun.length || !withRain.length) return finding(heading, "Compares average sunshine and total rain for each destination.", needsDays("Averages and totals", plural(dates.length, "day"), 3));
+  const sunniest = withSun.reduce((b, s) => (s.sun > b.sun ? s : b));
+  const rainiest = withRain.reduce((b, s) => (s.rain > b.rain ? s : b));
+  const title = `${sunniest.name} is the sunniest (${sunniest.sun.toFixed(1)} h a day) and ${rainiest.name} the rainiest (${rainiest.rain.toFixed(2)} in)`;
+  const explain = h("span", null,
+    `Sunshine is the average of sunshine_hours per day and rain is the total of precip_in, both over ${plural(dates.length, "day")} of history.csv. `,
+    h("strong", null, `Sunniest: ${sunniest.name}, ${sunniest.sun.toFixed(2)} h a day. Rainiest: ${rainiest.name}, ${rainiest.rain.toFixed(2)} in in total.`),
+    ` ${rainiest.rain === 0 ? "Nothing has rained yet, so the rainiest pick is just the first in the list." : ""}`);
+  stats.sort((a, b) => (b.sun ?? -1) - (a.sun ?? -1));
+  const { box, canvas } = chartBox("Bar chart of average daily sunshine hours and total rain in inches for each destination", true);
+  new Chart(canvas, {
+    type: "bar",
+    data: { labels: stats.map(s => s.name), datasets: [
+      { label: "Avg sunshine (h/day)", data: stats.map(s => (s.sun === null ? null : round2(s.sun))), backgroundColor: "#FFD166", borderRadius: 8, yAxisID: "y" },
+      { label: "Total rain (in)", data: stats.map(s => (s.rain === null ? null : round2(s.rain))), backgroundColor: "#0077B6", borderRadius: 8, yAxisID: "y2" },
+    ] },
+    options: { scales: {
+      x: { grid: { display: false } },
+      y: { position: "left", beginAtZero: true, grid: { color: "rgba(0, 119, 182, 0.12)" }, title: { display: true, text: "Sunshine (h/day)" } },
+      y2: { position: "right", beginAtZero: true, grid: { display: false }, title: { display: true, text: "Rain (in)" } },
+    } },
+  });
+  return finding(title, explain, box);
+}
+
+async function initTrends(main) {
+  const { rows } = await loadData();
+  const dates = [...new Set(rows.map(r => r.date))].sort();
+  main.replaceChildren();
+  if (!rows.length) { main.append(h("p", { class: "empty glass" }, "🏝️ No history yet. Check back after the first daily update.")); return; }
+  if (typeof Chart === "undefined") throw new Error("Chart.js did not load (vendor/chart.umd.min.js)");
+  styleChartDefaults();
+  main.append(
+    ...(dates.length < 3 ? [h("p", { class: "notice" }, `🌴 We only have ${plural(dates.length, "day")} of history so far. Some findings need more days and will appear on their own as the history grows.`)] : []),
+    buildExplorer(rows, dates),
+    findingSinceStart(rows, dates),
+    findingBiggestMove(rows, dates),
+    findingSpread(rows, dates),
+    findingSunRain(rows, dates));
+}
+
 // ---------- start-up ----------
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -465,6 +722,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const page = document.body.dataset.page;
     if (page === "today") await initToday(main);
     else if (page === "browse") await initBrowse(main);
+    else if (page === "trends") await initTrends(main);
   } catch (err) {
     console.error(err);
     main.replaceChildren(h("p", { class: "empty glass" },

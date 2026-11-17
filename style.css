@@ -305,3 +305,23 @@ section { margin-top: 8px; }
   .wave, .hero-sun { animation: none; }
   .lift { transition: none; }
 }
+
+/* ---------- trends page ---------- */
+
+.explorer, .finding { padding: 20px 22px; margin-top: 18px; }
+.explorer h2, .finding h2 { font-size: 1.35rem; color: var(--ocean); line-height: 1.3; }
+.finding .explain { margin: 8px 0 14px; color: var(--ink-soft); font-size: 0.95rem; }
+.finding .explain strong { color: var(--ink); }
+.chart-box { position: relative; height: 340px; }
+.chart-box.tall { height: 420px; }
+.picker { display: flex; flex-wrap: wrap; gap: 8px 10px; margin: 14px 0 0; padding: 0; border: 0; }
+.picker legend { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft); font-weight: 600; padding: 0; margin-bottom: 6px; }
+.pick { display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 500; cursor: pointer; padding: 3px 10px 3px 6px; border-radius: 999px; background: rgba(255, 255, 255, 0.7); }
+.pick input { width: 16px; height: 16px; cursor: pointer; }
+.pick input:focus-visible { outline: 3px solid var(--aqua); outline-offset: 2px; }
+.swatch { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+.needs-days { margin: 14px 0 0; padding: 22px; text-align: center; border-radius: 16px; background: rgba(255, 209, 102, 0.3); color: var(--ink); }
+.picker-actions { display: flex; gap: 8px; width: 100%; margin-top: 4px; }
+.mini-btn { font: inherit; font-size: 0.8rem; font-weight: 600; color: var(--ocean); background: rgba(0, 119, 182, 0.1); border: 0; border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+.mini-btn:focus-visible { outline: 3px solid var(--aqua); outline-offset: 2px; }
+@media (max-width: 560px) { .chart-box, .chart-box.tall { height: 300px; } }
