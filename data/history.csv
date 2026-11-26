@@ -107,3 +107,15 @@ date,item_id,item,source,country,region,vibe,temp_high_f,temp_low_f,precip_in,uv
 2026-11-25,santorini,Santorini,open-meteo,Greece,Europe,beach,60.6,54.3,0.0,3.5,10.9,9.67
 2026-11-25,tokyo,Tokyo,open-meteo,Japan,Asia,city,55.9,39.4,0.0,3.25,4.4,9.0
 2026-11-25,tulum,Tulum,open-meteo,Mexico,North America,beach,83.1,70.4,0.118,6.0,12.4,9.65
+2026-11-26,amalfi,Amalfi Coast,open-meteo,Italy,Europe,beach,63.4,57.0,0.803,2.4,11.6,7.72
+2026-11-26,bali,Bali (Denpasar),open-meteo,Indonesia,Asia,beach,87.6,77.5,0.161,9.0,6.5,11.57
+2026-11-26,bora-bora,Bora Bora,open-meteo,French Polynesia,Oceania,beach,75.3,71.7,0.102,9.7,19.6,11.02
+2026-11-26,cabo,Cabo San Lucas,open-meteo,Mexico,North America,beach,82.3,66.2,0.008,5.7,10.6,10.28
+2026-11-26,dubai,Dubai,open-meteo,UAE,Middle East,city,83.1,76.9,0.0,5.35,8.9,10.0
+2026-11-26,maldives,Maldives (Malé),open-meteo,Maldives,Asia,beach,84.5,80.1,0.189,8.45,11.0,11.78
+2026-11-26,maui,Maui (Wailea),open-meteo,USA,North America,beach,79.9,68.0,0.098,5.75,16.9,10.66
+2026-11-26,nassau,Nassau,open-meteo,Bahamas,Caribbean,beach,78.8,71.7,0.028,5.45,17.7,10.03
+2026-11-26,paris,Paris,open-meteo,France,Europe,city,42.5,32.7,0.008,1.65,7.1,2.51
+2026-11-26,santorini,Santorini,open-meteo,Greece,Europe,beach,63.5,54.3,0.0,2.75,7.7,5.13
+2026-11-26,tokyo,Tokyo,open-meteo,Japan,Asia,city,57.1,43.4,0.0,3.3,2.5,8.79
+2026-11-26,tulum,Tulum,open-meteo,Mexico,North America,beach,78.6,64.6,0.0,6.25,10.1,10.37
